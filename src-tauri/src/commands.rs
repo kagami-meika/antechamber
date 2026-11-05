@@ -216,7 +216,7 @@ pub fn save_file_dialog(default_name: String, extension: String, content: String
 #[tauri::command]
 pub fn restore_json(state: State<'_, AppState>, json_content: String) -> Result<(), String> {
     let data: ExportData = serde_json::from_str(&json_content).map_err(|e| format!("Invalid JSON format: {}", e))?;
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let mut db = state.db.lock().map_err(|e| e.to_string())?;
     db.clear_and_restore(&data.cloisters, &data.presences, &data.messages).map_err(|e| e.to_string())?;
     Ok(())
 }

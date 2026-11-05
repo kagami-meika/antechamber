@@ -21,6 +21,14 @@ impl Database {
     }
 
     fn init(&self) -> Result<()> {
+        // Enable WAL mode for performance & concurrency, and enforce foreign keys
+        self.conn.execute_batch(
+            "
+            PRAGMA journal_mode = WAL;
+            PRAGMA foreign_keys = ON;
+            "
+        )?;
+
         self.conn.execute_batch(
             "
             CREATE TABLE IF NOT EXISTS cloisters (
@@ -36,7 +44,8 @@ impl Database {
                 name TEXT NOT NULL,
                 description TEXT NOT NULL,
                 color TEXT NOT NULL,
-                created_at INTEGER NOT NULL
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (cloister_id) REFERENCES cloisters(id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS messages (
@@ -48,7 +57,9 @@ impl Database {
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER,
                 edit_history_json TEXT NOT NULL DEFAULT '[]',
-                is_deleted INTEGER NOT NULL DEFAULT 0
+                is_deleted INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (cloister_id) REFERENCES cloisters(id) ON DELETE CASCADE,
+                FOREIGN KEY (presence_id) REFERENCES presences(id) ON DELETE CASCADE
             );
             "
         )?;
@@ -348,20 +359,47 @@ impl Database {
         Ok(messages)
     }
 
-    pub fn clear_and_restore(&self, cloisters: &[Cloister], presences: &[Presence], messages: &[Message]) -> Result<()> {
-        self.conn.execute("DELETE FROM messages", [])?;
-        self.conn.execute("DELETE FROM presences", [])?;
-        self.conn.execute("DELETE FROM cloisters", [])?;
+    pub fn clear_and_restore(&mut self, cloisters: &[Cloister], presences: &[Presence], messages: &[Message]) -> Result<()> {
+        let tx = self.conn.transaction()?;
+
+        // Temporarily disable foreign keys within transaction or clear in reverse child-parent dependency order
+        tx.execute("DELETE FROM messages", [])?;
+        tx.execute("DELETE FROM presences", [])?;
+        tx.execute("DELETE FROM cloisters", [])?;
 
         for c in cloisters {
-            self.insert_cloister(c)?;
+            tx.execute(
+                "INSERT INTO cloisters (id, title, created_at, updated_at) VALUES (?1, ?2, ?3, ?4)",
+                params![c.id, c.title, c.created_at, c.updated_at],
+            )?;
         }
         for p in presences {
-            self.insert_presence(p)?;
+            tx.execute(
+                "INSERT INTO presences (id, cloister_id, name, description, color, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![p.id, p.cloister_id, p.name, p.description, p.color, p.created_at],
+            )?;
         }
         for m in messages {
-            self.insert_message(m)?;
+            let quotes_json = serde_json::to_string(&m.quotes).unwrap_or_else(|_| "[]".to_string());
+            let edit_history_json = serde_json::to_string(&m.edit_history).unwrap_or_else(|_| "[]".to_string());
+            tx.execute(
+                "INSERT INTO messages (id, cloister_id, presence_id, content, quotes_json, created_at, updated_at, edit_history_json, is_deleted)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![
+                    m.id,
+                    m.cloister_id,
+                    m.presence_id,
+                    m.content,
+                    quotes_json,
+                    m.created_at,
+                    m.updated_at,
+                    edit_history_json,
+                    if m.is_deleted { 1 } else { 0 }
+                ],
+            )?;
         }
+
+        tx.commit()?;
         Ok(())
     }
 }

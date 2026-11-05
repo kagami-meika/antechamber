@@ -220,11 +220,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectCloister: async (id: string) => {
-    set({ activeCloisterId: id, pendingQuotes: [], searchQuery: '', searchResults: null });
-    const presences = await api.getPresences(id);
-    const activePresenceId = presences.length > 0 ? presences[0].id : null;
-    set({ presences, activePresenceId });
-    await get().loadMessages(id);
+    set({
+      activeCloisterId: id,
+      pendingQuotes: [],
+      searchQuery: '',
+      searchResults: null,
+      messages: [],
+      presences: [],
+      activePresenceId: null,
+    });
+
+    const [presences, messages] = await Promise.all([
+      api.getPresences(id),
+      api.getMessages(id),
+    ]);
+
+    // Check race condition: only update state if user hasn't switched to another cloister in the meantime
+    if (get().activeCloisterId === id) {
+      const activePresenceId = presences.length > 0 ? presences[0].id : null;
+      set({
+        presences,
+        activePresenceId,
+        messages,
+      });
+    }
   },
 
   createCloister: async (title: string) => {
@@ -308,7 +327,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   loadMessages: async (cloisterId: string) => {
     const msgs = await api.getMessages(cloisterId);
-    set({ messages: msgs });
+    if (get().activeCloisterId === cloisterId) {
+      set({ messages: msgs });
+    }
   },
 
   sendMessage: async (content: string) => {
