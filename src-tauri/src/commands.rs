@@ -193,6 +193,11 @@ pub fn export_txt(state: State<'_, AppState>, cloister_id: Option<String>) -> Re
 }
 
 #[tauri::command]
+pub fn save_file_dialog(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn restore_json(state: State<'_, AppState>, json_content: String) -> Result<(), String> {
     let data: ExportData = serde_json::from_str(&json_content).map_err(|e| format!("Invalid JSON format: {}", e))?;
     let db = state.db.lock().map_err(|e| e.to_string())?;

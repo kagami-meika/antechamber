@@ -5,7 +5,6 @@ import { ChatTimeline } from './components/ChatTimeline';
 import { Composer } from './components/Composer';
 import { PresencesModal } from './components/PresencesModal';
 import { ExportModal } from './components/ExportModal';
-import { TitleBar } from './components/TitleBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { SettingsModal } from './components/SettingsModal';
 import { AboutModal } from './components/AboutModal';
@@ -48,27 +47,24 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-white dark:bg-zinc-950 font-sans">
-      <TitleBar />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          onOpenPresencesModal={() => setIsPresencesOpen(true)}
-          onOpenExportModal={() => setIsExportOpen(true)}
-          onOpenSettingsModal={() => setIsSettingsOpen(true)}
-          onOpenAboutModal={() => setIsAboutOpen(true)}
-        />
+    <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-zinc-950 font-sans">
+      <Sidebar
+        onOpenPresencesModal={() => setIsPresencesOpen(true)}
+        onOpenExportModal={() => setIsExportOpen(true)}
+        onOpenSettingsModal={() => setIsSettingsOpen(true)}
+        onOpenAboutModal={() => setIsAboutOpen(true)}
+      />
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
-          {isSearchActive ? (
-            <GlobalSearchPanel />
-          ) : (
-            <>
-              <ChatTimeline />
-              <Composer />
-            </>
-          )}
-        </main>
-      </div>
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
+        {isSearchActive ? (
+          <GlobalSearchPanel />
+        ) : (
+          <>
+            <ChatTimeline />
+            <Composer />
+          </>
+        )}
+      </main>
 
       {isConfirmOpen && confirmData && (
         <ConfirmDialog
