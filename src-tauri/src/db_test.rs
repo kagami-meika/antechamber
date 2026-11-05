@@ -41,6 +41,7 @@ mod tests {
 
         let p1 = Presence {
             id: "p1".to_string(),
+            cloister_id: "c1".to_string(),
             name: "Rational".to_string(),
             description: "Analytic side".to_string(),
             color: "#3b82f6".to_string(),
@@ -48,6 +49,7 @@ mod tests {
         };
         let p2 = Presence {
             id: "p2".to_string(),
+            cloister_id: "c1".to_string(),
             name: "Emotional".to_string(),
             description: "Feeling side".to_string(),
             color: "#ec4899".to_string(),
@@ -56,7 +58,7 @@ mod tests {
         db.insert_presence(&p1).unwrap();
         db.insert_presence(&p2).unwrap();
 
-        let presences = db.get_presences().unwrap();
+        let presences = db.get_presences("c1").unwrap();
         assert_eq!(presences.len(), 2);
 
         // Send message

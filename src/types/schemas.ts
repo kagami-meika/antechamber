@@ -8,6 +8,7 @@ export const QuoteSchema = z.object({
 
 export const PresenceSchema = z.object({
   id: z.string(),
+  cloisterId: z.string(),
   name: z.string().min(1, '名称不能为空').max(50, '名称最多50字符'),
   description: z.string().max(200, '描述最多200字符').default(''),
   color: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, '非法颜色值'),

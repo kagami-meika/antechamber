@@ -1,5 +1,6 @@
 export interface Presence {
   id: string;
+  cloisterId: string;
   name: string;
   description: string;
   color: string;

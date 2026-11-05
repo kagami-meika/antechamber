@@ -5,7 +5,7 @@ import { Cloister, Presence, Message, Quote, ExportData } from '../types/schemas
 const isTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 // LocalStorage mock state for pure web preview or browser environment
-const STORAGE_KEY = 'antechamber_mock_data_v1';
+const STORAGE_KEY = 'antechamber_mock_data_v2';
 
 function getMockData(): ExportData {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -17,65 +17,18 @@ function getMockData(): ExportData {
     }
   }
   const defaultData: ExportData = {
-    version: '0.1.0',
+    version: '0.2.0',
     exportedAt: Date.now(),
     cloisters: [
       {
         id: 'c-default',
-        title: '初始廊道',
-        createdAt: Date.now() - 3600000,
-        updatedAt: Date.now() - 3600000,
+        title: 'Cloister 1',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       },
     ],
-    presences: [
-      {
-        id: 'p-1',
-        name: '理智',
-        description: '冷静、逻辑严密、客观分析的自我侧面',
-        color: '#2563eb',
-        createdAt: Date.now() - 3600000,
-      },
-      {
-        id: 'p-2',
-        name: '感性',
-        description: '敏锐、直觉、充满温度与情感的在场者',
-        color: '#db2777',
-        createdAt: Date.now() - 3600000,
-      },
-      {
-        id: 'p-3',
-        name: '观察者',
-        description: '超然物外、审视全局的记录者',
-        color: '#4b5563',
-        createdAt: Date.now() - 3600000,
-      },
-    ],
-    messages: [
-      {
-        id: 'm-1',
-        cloisterId: 'c-default',
-        presenceId: 'p-1',
-        content: '这是 Antechamber 的初始测试空间。我们在这里可以以不同临在者自由交流。',
-        quotes: [],
-        createdAt: Date.now() - 3000000,
-        isDeleted: false,
-      },
-      {
-        id: 'm-2',
-        cloisterId: 'c-default',
-        presenceId: 'p-2',
-        content: '感受到了这里的宁静与沉淀，没有AI干预，只有我们自己。',
-        quotes: [
-          {
-            sourceMessageId: 'm-1',
-            sourcePresenceName: '理智',
-            text: '初始测试空间',
-          },
-        ],
-        createdAt: Date.now() - 2500000,
-        isDeleted: false,
-      },
-    ],
+    presences: [],
+    messages: [],
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
   return defaultData;
@@ -144,25 +97,27 @@ export const api = {
     saveMockData(data);
   },
 
-  async getPresences(): Promise<Presence[]> {
+  async getPresences(cloisterId: string): Promise<Presence[]> {
     if (isTauri()) {
-      const res: any = await invoke('get_presences');
+      const res: any = await invoke('get_presences', { cloisterId });
       return res.map((r: any) => ({
         id: r.id,
+        cloisterId: r.cloister_id,
         name: r.name,
         description: r.description,
         color: r.color,
         createdAt: r.created_at,
       }));
     }
-    return getMockData().presences;
+    return getMockData().presences.filter((p: Presence) => p.cloisterId === cloisterId);
   },
 
-  async createPresence(name: string, description: string, color: string): Promise<Presence> {
+  async createPresence(cloisterId: string, name: string, description: string, color: string): Promise<Presence> {
     if (isTauri()) {
-      const r: any = await invoke('create_presence', { name, description, color });
+      const r: any = await invoke('create_presence', { cloisterId, name, description, color });
       return {
         id: r.id,
+        cloisterId: r.cloister_id,
         name: r.name,
         description: r.description,
         color: r.color,
@@ -172,6 +127,7 @@ export const api = {
     const data = getMockData();
     const p: Presence = {
       id: 'p-' + Date.now(),
+      cloisterId,
       name,
       description,
       color,
@@ -339,7 +295,9 @@ export const api = {
     if (isTauri()) {
       return await invoke('export_json');
     }
-    return JSON.stringify(getMockData(), null, 2);
+    const data = getMockData();
+    data.version = '0.2.0';
+    return JSON.stringify(data, null, 2);
   },
 
   async exportJsonl(): Promise<string> {

@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
           <h1 className="text-sm font-semibold tracking-wider uppercase text-zinc-900 dark:text-zinc-100">
             Antechamber
           </h1>
-          <p className="text-xs text-zinc-500 font-mono">v0.1.0</p>
+          <p className="text-xs text-zinc-500 font-mono">v0.2.0</p>
         </div>
         <button
           onClick={toggleTheme}
@@ -102,11 +102,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
 
       {/* Cloister Section Header */}
       <div className="px-4 py-2 flex items-center justify-between text-xs font-medium text-zinc-500 uppercase tracking-wider">
-        <span>Cloister (廊道)</span>
+        <span>Cloisters</span>
         <button
           onClick={() => setIsCreating(true)}
           className="p-1 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition"
-          title="新建廊道"
+          title="新建 Cloister"
         >
           <Plus size={14} />
         </button>
@@ -219,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
           onClick={onOpenPresencesModal}
           className="w-full text-left px-2.5 py-1.5 rounded text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition flex items-center justify-between"
         >
-          <span className="font-medium">Presences (临在者)</span>
+          <span className="font-medium">Presences</span>
           <span className="text-[10px] text-zinc-400 font-mono tracking-tighter">管理</span>
         </button>
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Message, Presence } from '../types/schemas';
 import { useAppStore } from '../store/useAppStore';
-import { Quote, Edit2, Trash2, History } from 'lucide-react';
+import { Quote, Edit2, Trash2, History, Copy, Check } from 'lucide-react';
 
 interface MessageItemProps {
   message: Message;
@@ -15,14 +15,54 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
   const [editContent, setEditContent] = useState(message.content);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Allow selecting text within message to quote
+  // Selection popup menu state
+  const [selectionMenu, setSelectionMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    text: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const handleMouseUp = () => {
+    if (isEditing) return;
     const selection = window.getSelection();
     if (selection && !selection.isCollapsed) {
       const selectedText = selection.toString().trim();
       if (selectedText) {
-        onQuoteText(selectedText, message);
+        // Calculate position for the floating menu
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setSelectionMenu({
+          visible: true,
+          x: Math.max(10, rect.left + rect.width / 2),
+          y: rect.top - 8,
+          text: selectedText,
+        });
+        return;
       }
+    }
+    // If click or collapsed selection, dismiss menu
+    setSelectionMenu(null);
+  };
+
+  const handleActionQuote = () => {
+    if (selectionMenu?.text) {
+      onQuoteText(selectionMenu.text, message);
+      window.getSelection()?.removeAllRanges();
+      setSelectionMenu(null);
+    }
+  };
+
+  const handleActionCopy = async () => {
+    if (selectionMenu?.text) {
+      await navigator.clipboard.writeText(selectionMenu.text);
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+        setSelectionMenu(null);
+        window.getSelection()?.removeAllRanges();
+      }, 600);
     }
   };
 
@@ -51,6 +91,36 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
       className="group relative py-3 px-4 transition hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 border-l-2 border-transparent hover:border-zinc-300 dark:hover:border-zinc-700"
       onMouseUp={handleMouseUp}
     >
+      {/* Floating Selection Action Menu */}
+      {selectionMenu?.visible && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${selectionMenu.x}px`,
+            top: `${selectionMenu.y}px`,
+            transform: 'translate(-50%, -100%)',
+          }}
+          className="z-50 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-md shadow-lg py-1 px-1.5 flex items-center gap-1 text-[11px] font-sans animate-in fade-in zoom-in-95 duration-100 select-none"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={handleActionQuote}
+            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800 dark:hover:bg-zinc-200 transition"
+          >
+            <Quote size={11} />
+            <span>引用</span>
+          </button>
+          <div className="w-[1px] h-3 bg-zinc-700 dark:bg-zinc-300" />
+          <button
+            onClick={handleActionCopy}
+            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800 dark:hover:bg-zinc-200 transition"
+          >
+            {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+            <span>{copied ? '已复制' : '复制'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Presence Identity and Meta Header */}
       <div className="flex items-center justify-between gap-2 mb-1.5 select-none">
         <div className="flex items-center gap-2">

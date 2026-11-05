@@ -32,10 +32,12 @@ impl Database {
 
             CREATE TABLE IF NOT EXISTS presences (
                 id TEXT PRIMARY KEY,
+                cloister_id TEXT NOT NULL,
                 name TEXT NOT NULL,
                 description TEXT NOT NULL,
                 color TEXT NOT NULL,
-                created_at INTEGER NOT NULL
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (cloister_id) REFERENCES cloisters(id)
             );
 
             CREATE TABLE IF NOT EXISTS messages (
@@ -52,6 +54,7 @@ impl Database {
                 FOREIGN KEY (presence_id) REFERENCES presences(id)
             );
 
+            CREATE INDEX IF NOT EXISTS idx_presences_cloister_id ON presences(cloister_id);
             CREATE INDEX IF NOT EXISTS idx_messages_cloister_id ON messages(cloister_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
             "
@@ -96,20 +99,42 @@ impl Database {
 
     pub fn delete_cloister(&self, id: &str) -> Result<()> {
         self.conn.execute("DELETE FROM messages WHERE cloister_id = ?1", params![id])?;
+        self.conn.execute("DELETE FROM presences WHERE cloister_id = ?1", params![id])?;
         self.conn.execute("DELETE FROM cloisters WHERE id = ?1", params![id])?;
         Ok(())
     }
 
     // --- Presences ---
-    pub fn get_presences(&self) -> Result<Vec<Presence>> {
-        let mut stmt = self.conn.prepare("SELECT id, name, description, color, created_at FROM presences ORDER BY created_at ASC")?;
+    pub fn get_presences(&self, cloister_id: &str) -> Result<Vec<Presence>> {
+        let mut stmt = self.conn.prepare("SELECT id, cloister_id, name, description, color, created_at FROM presences WHERE cloister_id = ?1 ORDER BY created_at ASC")?;
+        let rows = stmt.query_map(params![cloister_id], |row| {
+            Ok(Presence {
+                id: row.get(0)?,
+                cloister_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                color: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })?;
+
+        let mut presences = Vec::new();
+        for r in rows {
+            presences.push(r?);
+        }
+        Ok(presences)
+    }
+
+    pub fn get_all_presences(&self) -> Result<Vec<Presence>> {
+        let mut stmt = self.conn.prepare("SELECT id, cloister_id, name, description, color, created_at FROM presences ORDER BY created_at ASC")?;
         let rows = stmt.query_map([], |row| {
             Ok(Presence {
                 id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                color: row.get(3)?,
-                created_at: row.get(4)?,
+                cloister_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                color: row.get(4)?,
+                created_at: row.get(5)?,
             })
         })?;
 
@@ -122,8 +147,8 @@ impl Database {
 
     pub fn insert_presence(&self, presence: &Presence) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO presences (id, name, description, color, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![presence.id, presence.name, presence.description, presence.color, presence.created_at],
+            "INSERT INTO presences (id, cloister_id, name, description, color, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![presence.id, presence.cloister_id, presence.name, presence.description, presence.color, presence.created_at],
         )?;
         Ok(())
     }

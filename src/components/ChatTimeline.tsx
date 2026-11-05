@@ -49,13 +49,13 @@ export const ChatTimeline: React.FC = () => {
                 <span>搜索关键词: “{searchQuery}” ({searchResults.length} 条匹配)</span>
               </span>
             ) : (
-              activeCloister?.title || '未选择廊道'
+              activeCloister?.title || ''
             )}
           </h2>
           <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
             {searchResults !== null
               ? '搜索结果覆盖所有历史记录'
-              : `单一线性时间线 · ${messages.filter((m) => !m.isDeleted).length} 条消息`}
+              : `${messages.filter((m) => !m.isDeleted).length} 条消息`}
           </div>
         </div>
       </div>
@@ -66,12 +66,7 @@ export const ChatTimeline: React.FC = () => {
           <div className="h-full flex flex-col items-center justify-center text-center p-8 select-none">
             <MessageSquareOff className="text-zinc-300 dark:text-zinc-700 mb-3" size={32} />
             <p className="text-xs text-zinc-500 font-medium">
-              {searchResults !== null ? '未找到相关对话片段' : '此廊道内暂无对话'}
-            </p>
-            <p className="text-[11px] text-zinc-400 mt-1 max-w-sm">
-              {searchResults !== null
-                ? '可以尝试搜索其他关键词'
-                : '在下方选择临在者身份并输入文字，开启与自己的多向对话。'}
+              {searchResults !== null ? '未找到相关对话片段' : '暂无对话'}
             </p>
           </div>
         ) : (

@@ -11,6 +11,7 @@ pub struct Cloister {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Presence {
     pub id: String,
+    pub cloister_id: String,
     pub name: String,
     pub description: String,
     pub color: String,

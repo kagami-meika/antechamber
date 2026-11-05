@@ -63,7 +63,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
         {/* Header */}
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Presences (临在者管理)</h2>
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Presences</h2>
             <p className="text-xs text-zinc-500 mt-0.5">
               每个 Presence 代表你的某种自我侧面，无需完整人格定义。
             </p>
@@ -89,7 +89,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      placeholder="临在者名称"
+                      placeholder="Presence 名称"
                       className="flex-1 text-xs px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded focus:outline-none"
                     />
                     <div className="flex items-center gap-1">
@@ -155,10 +155,10 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                   >
                     <Edit2 size={13} />
                   </button>
-                  {presences.length > 1 && (
+                  {presences.length > 0 && (
                     <button
                       onClick={() => {
-                        if (confirm(`确认删除临在者【${p.name}】？`)) {
+                        if (confirm(`确认删除【${p.name}】？`)) {
                           deletePresence(p.id);
                         }
                       }}
@@ -182,7 +182,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                   autoFocus
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="临在者名称..."
+                  placeholder="Presence 名称..."
                   className="flex-1 text-xs px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded focus:outline-none"
                 />
                 <div className="flex items-center gap-1">
@@ -216,7 +216,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                   type="submit"
                   className="text-xs px-3 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium"
                 >
-                  添加临在者
+                  添加 Presence
                 </button>
               </div>
             </form>
@@ -226,7 +226,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
               className="w-full py-2 border border-dashed border-zinc-300 dark:border-zinc-700 rounded text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:border-zinc-400 flex items-center justify-center gap-1 transition"
             >
               <Plus size={13} />
-              <span>添加新临在者</span>
+              <span>添加新 Presence</span>
             </button>
           )}
         </div>

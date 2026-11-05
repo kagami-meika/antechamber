@@ -7,6 +7,7 @@ export const Composer: React.FC = () => {
     presences,
     activePresenceId,
     selectPresence,
+    cycleNextPresence,
     sendMessage,
     pendingQuotes,
     removeQuote,
@@ -33,6 +34,11 @@ export const Composer: React.FC = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      cycleNextPresence();
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -51,29 +57,30 @@ export const Composer: React.FC = () => {
     <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
       <div className="max-w-4xl mx-auto space-y-3">
         {/* Presence Selector Pills (Spatial Identity) */}
-        <div className="flex items-center gap-1.5 flex-wrap select-none">
-          <span className="text-[11px] text-zinc-400 font-mono mr-1">以当前身份发言:</span>
-          {presences.map((p) => {
-            const isSelected = p.id === activePresence?.id;
-            return (
-              <button
-                key={p.id}
-                onClick={() => selectPresence(p.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition border ${
-                  isSelected
-                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 font-medium'
-                    : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
-                }`}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: p.color }}
-                />
-                <span>{p.name}</span>
-              </button>
-            );
-          })}
-        </div>
+        {presences.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap select-none">
+            {presences.map((p) => {
+              const isSelected = p.id === activePresence?.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => selectPresence(p.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition border ${
+                    isSelected
+                      ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 font-medium'
+                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
+                  }`}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  <span>{p.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Pending Quotes Display */}
         {pendingQuotes.length > 0 && (
@@ -110,18 +117,22 @@ export const Composer: React.FC = () => {
             value={content}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            placeholder={`以「${activePresence?.name || '当前临在者'}」的身份记录思考... (Enter 发送，Shift+Enter 换行)`}
+            placeholder={
+              presences.length > 0
+                ? `「${activePresence?.name || ''}」(Enter发送，Shift+Enter换行）`
+                : '请先添加 Presence 以开始记录...(Enter发送，Shift+Enter换行）'
+            }
             className="w-full text-xs font-sans p-3 bg-transparent focus:outline-none resize-none placeholder:text-zinc-400"
           />
 
           <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-100/60 dark:bg-zinc-800/40 border-t border-zinc-200 dark:border-zinc-800/80">
             <span className="text-[10px] text-zinc-400 font-mono">
-              纯文本记录 · 选取任意历史文字即可附带引用
+              Tab 轮切 Presence
             </span>
 
             <button
               onClick={handleSend}
-              disabled={!content.trim()}
+              disabled={!content.trim() || !activePresence}
               className="px-3 py-1 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs rounded font-medium disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition"
             >
               <span>发言</span>

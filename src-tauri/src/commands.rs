@@ -36,17 +36,18 @@ pub fn delete_cloister(state: State<'_, AppState>, id: String) -> Result<(), Str
 }
 
 #[tauri::command]
-pub fn get_presences(state: State<'_, AppState>) -> Result<Vec<Presence>, String> {
+pub fn get_presences(state: State<'_, AppState>, cloister_id: String) -> Result<Vec<Presence>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.get_presences().map_err(|e| e.to_string())
+    db.get_presences(&cloister_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn create_presence(state: State<'_, AppState>, name: String, description: String, color: String) -> Result<Presence, String> {
+pub fn create_presence(state: State<'_, AppState>, cloister_id: String, name: String, description: String, color: String) -> Result<Presence, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let now = chrono::Utc::now().timestamp_millis();
     let presence = Presence {
         id: uuid::Uuid::new_v4().to_string(),
+        cloister_id,
         name,
         description,
         color,
@@ -122,10 +123,10 @@ pub fn search_messages(state: State<'_, AppState>, query: String) -> Result<Vec<
 pub fn export_json(state: State<'_, AppState>) -> Result<String, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let cloisters = db.get_cloisters().map_err(|e| e.to_string())?;
-    let presences = db.get_presences().map_err(|e| e.to_string())?;
+    let presences = db.get_all_presences().map_err(|e| e.to_string())?;
     let messages = db.get_all_messages().map_err(|e| e.to_string())?;
     let data = ExportData {
-        version: "0.1.0".to_string(),
+        version: "0.2.0".to_string(),
         exported_at: chrono::Utc::now().timestamp_millis(),
         cloisters,
         presences,
@@ -149,7 +150,7 @@ pub fn export_jsonl(state: State<'_, AppState>) -> Result<String, String> {
 #[tauri::command]
 pub fn export_txt(state: State<'_, AppState>, cloister_id: Option<String>) -> Result<String, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
-    let presences = db.get_presences().map_err(|e| e.to_string())?;
+    let presences = db.get_all_presences().map_err(|e| e.to_string())?;
     let presence_map: std::collections::HashMap<String, String> = presences
         .into_iter()
         .map(|p| (p.id, p.name))

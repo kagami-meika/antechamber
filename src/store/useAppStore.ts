@@ -36,6 +36,7 @@ interface AppState {
 
   // Presence
   selectPresence: (id: string) => void;
+  cycleNextPresence: () => void;
   createPresence: (name: string, description: string, color: string) => Promise<Presence>;
   updatePresence: (id: string, name: string, description: string, color: string) => Promise<void>;
   deletePresence: (id: string) => Promise<void>;
@@ -79,26 +80,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   init: async () => {
     set({ loading: true, error: null });
     try {
-      const [cloisters, presences] = await Promise.all([
-        api.getCloisters(),
-        api.getPresences(),
-      ]);
+      const cloisters = await api.getCloisters();
 
       let activeCloisterId = cloisters.length > 0 ? cloisters[0].id : null;
-      let activePresenceId = presences.length > 0 ? presences[0].id : null;
 
-      // If no cloisters exist yet, create a default one
+      // If no cloisters exist yet, create a default empty one
       if (cloisters.length === 0) {
-        const defaultCloister = await api.createCloister('无题廊道');
+        const defaultCloister = await api.createCloister('Cloister 1');
         cloisters.push(defaultCloister);
         activeCloisterId = defaultCloister.id;
       }
 
-      // If no presences exist yet, create default presence
-      if (presences.length === 0) {
-        const p1 = await api.createPresence('自己', '本体侧面', '#3b82f6');
-        presences.push(p1);
-        activePresenceId = p1.id;
+      let presences: Presence[] = [];
+      let activePresenceId: string | null = null;
+
+      if (activeCloisterId) {
+        presences = await api.getPresences(activeCloisterId);
+        activePresenceId = presences.length > 0 ? presences[0].id : null;
       }
 
       set({
@@ -142,6 +140,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   selectCloister: async (id: string) => {
     set({ activeCloisterId: id, pendingQuotes: [], searchQuery: '', searchResults: null });
+    const presences = await api.getPresences(id);
+    const activePresenceId = presences.length > 0 ? presences[0].id : null;
+    set({ presences, activePresenceId });
     await get().loadMessages(id);
   },
 
@@ -150,6 +151,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       cloisters: [cloister, ...state.cloisters],
       activeCloisterId: cloister.id,
+      presences: [],
+      activePresenceId: null,
       messages: [],
       pendingQuotes: [],
     }));
@@ -170,11 +173,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       cloisters: remaining,
       activeCloisterId: nextActiveId,
+      presences: [],
+      activePresenceId: null,
       messages: [],
       pendingQuotes: [],
     });
     if (nextActiveId) {
-      await get().loadMessages(nextActiveId);
+      await get().selectCloister(nextActiveId);
     }
   },
 
@@ -182,11 +187,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ activePresenceId: id });
   },
 
+  cycleNextPresence: () => {
+    const { presences, activePresenceId } = get();
+    if (presences.length === 0) return;
+    const currentIndex = presences.findIndex((p) => p.id === activePresenceId);
+    const nextIndex = (currentIndex + 1) % presences.length;
+    set({ activePresenceId: presences[nextIndex].id });
+  },
+
   createPresence: async (name: string, description: string, color: string) => {
-    const presence = await api.createPresence(name, description, color);
+    const { activeCloisterId } = get();
+    if (!activeCloisterId) throw new Error('No active cloister selected');
+    const presence = await api.createPresence(activeCloisterId, name, description, color);
     set((state) => ({
       presences: [...state.presences, presence],
-      activePresenceId: presence.id,
+      activePresenceId: state.activePresenceId ? state.activePresenceId : presence.id,
     }));
     return presence;
   },
