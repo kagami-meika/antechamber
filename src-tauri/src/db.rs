@@ -32,12 +32,11 @@ impl Database {
 
             CREATE TABLE IF NOT EXISTS presences (
                 id TEXT PRIMARY KEY,
-                cloister_id TEXT NOT NULL,
+                cloister_id TEXT NOT NULL DEFAULT '',
                 name TEXT NOT NULL,
                 description TEXT NOT NULL,
                 color TEXT NOT NULL,
-                created_at INTEGER NOT NULL,
-                FOREIGN KEY (cloister_id) REFERENCES cloisters(id)
+                created_at INTEGER NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS messages (
@@ -49,11 +48,34 @@ impl Database {
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER,
                 edit_history_json TEXT NOT NULL DEFAULT '[]',
-                is_deleted INTEGER NOT NULL DEFAULT 0,
-                FOREIGN KEY (cloister_id) REFERENCES cloisters(id),
-                FOREIGN KEY (presence_id) REFERENCES presences(id)
+                is_deleted INTEGER NOT NULL DEFAULT 0
             );
+            "
+        )?;
 
+        // Safe migration: check if presences table was created in older version without cloister_id
+        let mut has_cloister_id = false;
+        let mut pragma_stmt = self.conn.prepare("PRAGMA table_info(presences)")?;
+        let columns = pragma_stmt.query_map([], |row| {
+            let col_name: String = row.get(1)?;
+            Ok(col_name)
+        })?;
+        for col in columns {
+            if col? == "cloister_id" {
+                has_cloister_id = true;
+                break;
+            }
+        }
+        if !has_cloister_id {
+            self.conn.execute(
+                "ALTER TABLE presences ADD COLUMN cloister_id TEXT NOT NULL DEFAULT ''",
+                [],
+            )?;
+        }
+
+        // Create indexes
+        self.conn.execute_batch(
+            "
             CREATE INDEX IF NOT EXISTS idx_presences_cloister_id ON presences(cloister_id);
             CREATE INDEX IF NOT EXISTS idx_messages_cloister_id ON messages(cloister_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);

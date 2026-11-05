@@ -1,6 +1,6 @@
 [package]
 name = "antechamber"
-version = "0.2.0"
+version = "0.3.0"
 description = "A personal sanctuary for multifaceted dialogue"
 authors = ["kagami-meika"]
 edition = "2021"

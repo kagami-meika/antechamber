@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
           <h1 className="text-sm font-semibold tracking-wider uppercase text-zinc-900 dark:text-zinc-100">
             Antechamber
           </h1>
-          <p className="text-xs text-zinc-500 font-mono">v0.2.0</p>
+          <p className="text-xs text-zinc-500 font-mono">v0.3.0</p>
         </div>
         <button
           onClick={toggleTheme}

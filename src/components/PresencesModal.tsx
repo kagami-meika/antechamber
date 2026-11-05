@@ -15,8 +15,6 @@ const PRESET_COLORS = [
   '#d97706', // amber
   '#7c3aed', // purple
   '#4b5563', // gray
-  '#dc2626', // red
-  '#0891b2', // cyan
 ];
 
 export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose }) => {
@@ -92,16 +90,36 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                       placeholder="Presence 名称"
                       className="flex-1 text-xs px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded focus:outline-none"
                     />
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {PRESET_COLORS.map((c) => (
                         <button
                           key={c}
                           type="button"
                           onClick={() => setEditColor(c)}
                           style={{ backgroundColor: c }}
-                          className={`w-4 h-4 rounded-full border ${editColor === c ? 'border-zinc-900 dark:border-white scale-110' : 'border-transparent'}`}
+                          className={`w-4 h-4 rounded-full border ${editColor.toLowerCase() === c.toLowerCase() ? 'border-zinc-900 dark:border-white scale-110' : 'border-transparent'}`}
                         />
                       ))}
+                      {/* Native HTML5 Color Picker */}
+                      <label
+                        className="relative w-5 h-5 rounded-full overflow-hidden cursor-pointer border border-zinc-300 dark:border-zinc-600 hover:scale-105 transition flex items-center justify-center"
+                        title="自定义颜色"
+                        style={{ backgroundColor: editColor || '#000000' }}
+                      >
+                        <input
+                          type="color"
+                          value={editColor.startsWith('#') && (editColor.length === 7 || editColor.length === 4) ? editColor : '#2563eb'}
+                          onChange={(e) => setEditColor(e.target.value)}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                        />
+                      </label>
+                      <input
+                        type="text"
+                        value={editColor}
+                        onChange={(e) => setEditColor(e.target.value)}
+                        placeholder="#hex"
+                        className="w-16 font-mono text-[11px] px-1.5 py-0.5 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded focus:outline-none"
+                      />
                     </div>
                   </div>
                   <textarea
@@ -185,16 +203,36 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                   placeholder="Presence 名称..."
                   className="flex-1 text-xs px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded focus:outline-none"
                 />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {PRESET_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
                       style={{ backgroundColor: c }}
-                      className={`w-4 h-4 rounded-full border ${color === c ? 'border-zinc-900 dark:border-white scale-110' : 'border-transparent'}`}
+                      className={`w-4 h-4 rounded-full border ${color.toLowerCase() === c.toLowerCase() ? 'border-zinc-900 dark:border-white scale-110' : 'border-transparent'}`}
                     />
                   ))}
+                  {/* Native HTML5 Color Picker */}
+                  <label
+                    className="relative w-5 h-5 rounded-full overflow-hidden cursor-pointer border border-zinc-300 dark:border-zinc-600 hover:scale-105 transition flex items-center justify-center"
+                    title="自定义颜色"
+                    style={{ backgroundColor: color || '#000000' }}
+                  >
+                    <input
+                      type="color"
+                      value={color.startsWith('#') && (color.length === 7 || color.length === 4) ? color : '#2563eb'}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
+                  <input
+                    type="text"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    placeholder="#hex"
+                    className="w-16 font-mono text-[11px] px-1.5 py-0.5 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded focus:outline-none"
+                  />
                 </div>
               </div>
               <textarea
