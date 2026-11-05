@@ -114,9 +114,20 @@ pub fn delete_message(state: State<'_, AppState>, id: String) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub fn search_messages(state: State<'_, AppState>, query: String) -> Result<Vec<Message>, String> {
+pub fn search_messages(state: State<'_, AppState>, query: String) -> Result<Vec<(Message, String, String)>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.search_messages(&query).map_err(|e| e.to_string())
+    let messages = db.search_messages(&query).map_err(|e| e.to_string())?;
+    let cloisters = db.get_cloisters().map_err(|e| e.to_string())?;
+    let presences = db.get_all_presences().map_err(|e| e.to_string())?;
+
+    let cloister_map: std::collections::HashMap<String, String> = cloisters.iter().map(|c| (c.id.clone(), c.title.clone())).collect();
+    let presence_map: std::collections::HashMap<String, String> = presences.iter().map(|p| (p.id.clone(), p.name.clone())).collect();
+
+    Ok(messages.into_iter().map(|m| {
+        let c_title = cloister_map.get(&m.cloister_id).cloned().unwrap_or_else(|| "Unknown".to_string());
+        let p_name = presence_map.get(&m.presence_id).cloned().unwrap_or_else(|| "Unknown".to_string());
+        (m, c_title, p_name)
+    }).collect())
 }
 
 #[tauri::command]

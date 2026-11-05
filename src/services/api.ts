@@ -264,31 +264,42 @@ export const api = {
     }
   },
 
-  async searchMessages(query: string): Promise<Message[]> {
+  async searchMessages(query: string): Promise<Array<{message: Message, cloisterTitle: string, presenceName: string}>> {
     if (isTauri()) {
       const res: any = await invoke('search_messages', { query });
       return res.map((r: any) => ({
-        id: r.id,
-        cloisterId: r.cloister_id,
-        presenceId: r.presence_id,
-        content: r.content,
-        quotes: (r.quotes || []).map((q: any) => ({
-          sourceMessageId: q.source_message_id,
-          sourcePresenceName: q.source_presence_name,
-          text: q.text,
-        })),
-        createdAt: r.created_at,
-        updatedAt: r.updated_at,
-        editHistory: (r.edit_history || []).map((h: any) => ({
-          previousContent: h.previous_content,
-          editedAt: h.edited_at,
-        })),
-        isDeleted: r.is_deleted,
+        message: {
+          id: r[0].id,
+          cloisterId: r[0].cloister_id,
+          presenceId: r[0].presence_id,
+          content: r[0].content,
+          quotes: (r[0].quotes || []).map((q: any) => ({
+            sourceMessageId: q.source_message_id,
+            sourcePresenceName: q.source_presence_name,
+            text: q.text,
+          })),
+          createdAt: r[0].created_at,
+          updatedAt: r[0].updated_at,
+          editHistory: (r[0].edit_history || []).map((h: any) => ({
+            previousContent: h.previous_content,
+            editedAt: h.edited_at,
+          })),
+          isDeleted: r[0].is_deleted,
+        },
+        cloisterTitle: r[1],
+        presenceName: r[2],
       }));
     }
-    return getMockData().messages.filter(
-      (m: Message) => !m.isDeleted && m.content.toLowerCase().includes(query.toLowerCase())
-    );
+    const data = getMockData();
+    const cMap = new Map(data.cloisters.map((c: Cloister) => [c.id, c.title]));
+    const pMap = new Map(data.presences.map((p: Presence) => [p.id, p.name]));
+    return data.messages
+      .filter((m: Message) => !m.isDeleted && m.content.toLowerCase().includes(query.toLowerCase()))
+      .map((m: Message) => ({
+        message: m,
+        cloisterTitle: cMap.get(m.cloisterId) || 'Unknown Cloister',
+        presenceName: pMap.get(m.presenceId) || 'Unknown Presence',
+      }));
   },
 
   async exportJson(): Promise<string> {

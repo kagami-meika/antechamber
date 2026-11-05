@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Plus, MessageSquare, Trash2, Edit2, Check, X, Moon, Sun, Download, Search } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Edit2, Check, X, Moon, Sun, Download, Search, Settings, Info } from 'lucide-react';
 
 interface SidebarProps {
   onOpenPresencesModal: () => void;
   onOpenExportModal: () => void;
+  onOpenSettingsModal: () => void;
+  onOpenAboutModal: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenExportModal }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  onOpenPresencesModal,
+  onOpenExportModal,
+  onOpenSettingsModal,
+  onOpenAboutModal,
+}) => {
   const {
     cloisters,
     activeCloisterId,
@@ -21,6 +28,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
     setSearchQuery,
     search,
     clearSearch,
+    settings,
+    updateSettings,
+    openConfirm,
   } = useAppStore();
 
   const [isCreating, setIsCreating] = useState(false);
@@ -28,10 +38,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
+  // Resize sidebar logic
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX;
+    const startWidth = settings.sidebarWidth || 260;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.max(200, Math.min(480, startWidth + delta));
+      updateSettings({ sidebarWidth: newWidth });
+    };
+
+    const onMouseUp = () => {
+      setIsResizing(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
-    await createCloister(newTitle.trim());
+    const title = newTitle.trim();
+    if (!title) return;
+    if (cloisters.some((c) => c.title.toLowerCase() === title.toLowerCase())) {
+      alert('已存在同名 Cloister');
+      return;
+    }
+    await createCloister(title);
     setNewTitle('');
     setIsCreating(false);
   };
@@ -44,27 +84,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
 
   const handleSaveEdit = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!editTitle.trim()) return;
-    await updateCloister(id, editTitle.trim());
+    const title = editTitle.trim();
+    if (!title) return;
+    if (cloisters.some((c) => c.id !== id && c.title.toLowerCase() === title.toLowerCase())) {
+      alert('已存在同名 Cloister');
+      return;
+    }
+    await updateCloister(id, title);
     setEditingId(null);
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('确认删除该廊道及其对话历史？此操作不可撤销。')) {
-      await deleteCloister(id);
-    }
+    openConfirm(
+      '删除 Cloister',
+      '确认删除该 Cloister 及其所有对话历史与 Presences？此操作不可撤销。',
+      () => deleteCloister(id)
+    );
   };
 
   return (
-    <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex flex-col h-screen select-none">
+    <aside
+      style={{ width: `${settings.sidebarWidth || 260}px` }}
+      className="relative shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex flex-col h-full select-none"
+    >
+      {/* Drag handle for resizing */}
+      <div
+        onMouseDown={startResizing}
+        className={`absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-zinc-400/50 transition z-20 ${
+          isResizing ? 'bg-zinc-500' : ''
+        }`}
+      />
       {/* Brand Header */}
       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
         <div>
           <h1 className="text-sm font-semibold tracking-wider uppercase text-zinc-900 dark:text-zinc-100">
             Antechamber
           </h1>
-          <p className="text-xs text-zinc-500 font-mono">v0.3.0</p>
+          <p className="text-xs text-zinc-500 font-mono">v0.3.1</p>
         </div>
         <button
           onClick={toggleTheme}
@@ -213,7 +270,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
         })}
       </div>
 
-      {/* Footer Navigation: Presences & Data management */}
+      {/* Footer Navigation: Presences, Data, Settings, About */}
       <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
         <button
           onClick={onOpenPresencesModal}
@@ -230,6 +287,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenPresencesModal, onOpenEx
           <span className="font-medium">数据备份与导出</span>
           <Download size={12} className="text-zinc-400" />
         </button>
+
+        <div className="pt-1 flex items-center gap-1">
+          <button
+            onClick={onOpenSettingsModal}
+            className="flex-1 text-left px-2.5 py-1.5 rounded text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition flex items-center gap-2"
+          >
+            <Settings size={13} className="text-zinc-400" />
+            <span className="font-medium">设置</span>
+          </button>
+          <button
+            onClick={onOpenAboutModal}
+            className="p-1.5 rounded text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition flex items-center justify-center"
+            title="关于 Antechamber"
+          >
+            <Info size={13} className="text-zinc-400" />
+          </button>
+        </div>
       </div>
     </aside>
   );

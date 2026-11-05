@@ -6,11 +6,19 @@ import { Quote, Edit2, Trash2, History, Copy, Check } from 'lucide-react';
 interface MessageItemProps {
   message: Message;
   presence?: Presence;
+  isFirstInGroup?: boolean;
+  isLastInGroup?: boolean;
   onQuoteText: (quoteText: string, sourceMsg: Message) => void;
 }
 
-export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQuoteText }) => {
-  const { editMessage, deleteMessage } = useAppStore();
+export const MessageItem: React.FC<MessageItemProps> = ({
+  message,
+  presence,
+  isFirstInGroup = true,
+  isLastInGroup = true,
+  onQuoteText,
+}) => {
+  const { editMessage, deleteMessage, settings, openConfirm } = useAppStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showHistory, setShowHistory] = useState(false);
@@ -30,7 +38,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
     if (selection && !selection.isCollapsed) {
       const selectedText = selection.toString().trim();
       if (selectedText) {
-        // Calculate position for the floating menu
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         setSelectionMenu({
@@ -42,7 +49,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
         return;
       }
     }
-    // If click or collapsed selection, dismiss menu
     setSelectionMenu(null);
   };
 
@@ -72,15 +78,31 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
     setIsEditing(false);
   };
 
+  const handleDelete = () => {
+    openConfirm('删除消息', '确认删除此消息？删除后将在时间线中标记为已删除。', () => {
+      deleteMessage(message.id);
+    });
+  };
+
   const formattedTime = new Date(message.createdAt).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
   });
 
+  const timeDisplay = settings.showTimestamp
+    ? settings.timestampFormat === 'time-only'
+      ? formattedTime
+      : new Date(message.createdAt).toLocaleString()
+    : null;
+
   if (message.isDeleted) {
     return (
-      <div className="py-2.5 px-4 text-xs italic text-zinc-400 dark:text-zinc-600 border-l-2 border-zinc-200 dark:border-zinc-800">
+      <div className="relative pl-6 pr-4 py-2 text-xs italic text-zinc-400 dark:text-zinc-600">
+        <div
+          className="absolute left-2.5 top-0 bottom-0 w-[3px]"
+          style={{ backgroundColor: presence?.color || '#71717a' }}
+        />
         [此消息已删除]
       </div>
     );
@@ -88,9 +110,23 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
 
   return (
     <div
-      className="group relative py-3 px-4 transition hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 border-l-2 border-transparent hover:border-zinc-300 dark:hover:border-zinc-700"
+      className={`group relative pl-6 pr-4 transition hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 ${
+        isFirstInGroup ? 'pt-2.5 pb-1' : isLastInGroup ? 'pt-1 pb-2.5' : 'py-1'
+      }`}
       onMouseUp={handleMouseUp}
     >
+      {/* Continuous Vertical Bar */}
+      <div
+        className="absolute left-2.5 top-0 bottom-0 w-[3px]"
+        style={{
+          backgroundColor: presence?.color || '#71717a',
+          borderTopLeftRadius: isFirstInGroup ? '2px' : '0',
+          borderTopRightRadius: isFirstInGroup ? '2px' : '0',
+          borderBottomLeftRadius: isLastInGroup ? '2px' : '0',
+          borderBottomRightRadius: isLastInGroup ? '2px' : '0',
+        }}
+      />
+
       {/* Floating Selection Action Menu */}
       {selectionMenu?.visible && (
         <div
@@ -121,31 +157,74 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
         </div>
       )}
 
-      {/* Presence Identity and Meta Header */}
-      <div className="flex items-center justify-between gap-2 mb-1.5 select-none">
-        <div className="flex items-center gap-2">
-          <span
-            className="w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: presence?.color || '#a1a1aa' }}
-          />
-          <span className="text-xs font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {presence?.name || '未知身份'}
-          </span>
-          {presence?.description && (
-            <span className="text-[11px] text-zinc-400 truncate max-w-xs hidden sm:inline">
-              · {presence.description}
+      {/* Presence Identity and Meta Header (only show when first in group) */}
+      {isFirstInGroup && (
+        <div className="flex items-center justify-between gap-2 mb-1 select-none">
+          <div className="flex items-center gap-2">
+            <span
+              className="text-xs font-bold tracking-tight"
+              style={{ color: presence?.color || '#71717a' }}
+            >
+              {presence?.name || '未知身份'}
             </span>
-          )}
-          <span className="text-[10px] font-mono text-zinc-400">{formattedTime}</span>
-          {message.updatedAt && (
-            <span className="text-[10px] text-zinc-400 italic">
-              (已编辑)
-            </span>
-          )}
-        </div>
+            {presence?.description && (
+              <span className="text-[11px] text-zinc-400 truncate max-w-xs hidden sm:inline">
+                · {presence.description}
+              </span>
+            )}
+            {timeDisplay && (
+              <span className="text-[10px] font-mono text-zinc-400">{timeDisplay}</span>
+            )}
+            {message.updatedAt && (
+              <span className="text-[10px] text-zinc-400 italic">(已编辑)</span>
+            )}
+          </div>
 
-        {/* Quiet Interaction Toolbar */}
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
+          {/* Interaction Toolbar */}
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
+            <button
+              onClick={() => onQuoteText(message.content, message)}
+              className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded"
+              title="引用整条消息"
+            >
+              <Quote size={12} />
+            </button>
+            {message.editHistory && message.editHistory.length > 0 && (
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded"
+                title="查看修改历史"
+              >
+                <History size={12} />
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setIsEditing(true);
+                setEditContent(message.content);
+              }}
+              className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded"
+              title="编辑"
+            >
+              <Edit2 size={12} />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="p-1 text-zinc-400 hover:text-red-500 rounded"
+              title="删除"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Show timestamp on hover if consecutive */}
+      {!isFirstInGroup && (
+        <div className="absolute right-4 top-1 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition select-none">
+          {timeDisplay && (
+            <span className="text-[10px] font-mono text-zinc-400 mr-2">{timeDisplay}</span>
+          )}
           <button
             onClick={() => onQuoteText(message.content, message)}
             className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded"
@@ -153,15 +232,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
           >
             <Quote size={12} />
           </button>
-          {message.editHistory && message.editHistory.length > 0 && (
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded"
-              title="查看修改历史"
-            >
-              <History size={12} />
-            </button>
-          )}
           <button
             onClick={() => {
               setIsEditing(true);
@@ -173,25 +243,28 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
             <Edit2 size={12} />
           </button>
           <button
-            onClick={() => {
-              if (confirm('确认删除此消息？')) {
-                deleteMessage(message.id);
-              }
-            }}
+            onClick={handleDelete}
             className="p-1 text-zinc-400 hover:text-red-500 rounded"
             title="删除"
           >
             <Trash2 size={12} />
           </button>
         </div>
-      </div>
+      )}
 
       {/* Attached Quotes */}
       {message.quotes && message.quotes.length > 0 && (
-        <div className="space-y-1.5 mb-2 pl-3 border-l-2 border-zinc-300 dark:border-zinc-700">
+        <div className="space-y-1 mb-1.5 pl-2.5 border-l-2 border-zinc-200 dark:border-zinc-700">
           {message.quotes.map((q, idx) => (
-            <div key={idx} className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">
-              <span className="font-medium text-zinc-700 dark:text-zinc-300 mr-1.5">
+            <div
+              key={idx}
+              className="text-zinc-500 dark:text-zinc-400 leading-normal"
+              style={{
+                fontSize: `${settings.quoteFontSize}px`,
+                fontFamily: settings.quoteFontFamily,
+              }}
+            >
+              <span className="font-semibold text-zinc-700 dark:text-zinc-300 mr-1.5">
                 @{q.sourcePresenceName}:
               </span>
               <span className="italic select-text">“{q.text}”</span>
@@ -200,47 +273,52 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, presence, onQ
         </div>
       )}
 
-      {/* Message Content or Inline Editor */}
+      {/* Message Content / Inline Edit Form */}
       {isEditing ? (
         <div className="mt-1 space-y-2">
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
             rows={3}
-            autoFocus
-            className="w-full text-xs font-sans p-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded focus:outline-none focus:border-zinc-500 resize-y"
+            className="w-full text-xs p-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded focus:outline-none focus:border-zinc-500 resize-none font-sans leading-relaxed"
           />
-          <div className="flex justify-end gap-1.5">
+          <div className="flex justify-end gap-2">
             <button
               onClick={() => setIsEditing(false)}
-              className="px-2 py-0.5 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              className="text-xs px-2.5 py-1 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
             >
               取消
             </button>
             <button
               onClick={handleSaveEdit}
-              className="px-2.5 py-0.5 text-xs bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium"
+              className="text-xs px-3 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium"
             >
               保存修改
             </button>
           </div>
         </div>
       ) : (
-        <div className="text-xs leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-sans select-text">
+        <div
+          className="text-zinc-800 dark:text-zinc-200 leading-relaxed break-words whitespace-pre-wrap select-text"
+          style={{
+            fontSize: `${settings.fontSize}px`,
+            fontFamily: settings.fontFamily,
+          }}
+        >
           {message.content}
         </div>
       )}
 
-      {/* Revision History Collapsible */}
+      {/* Edit History Drawer */}
       {showHistory && message.editHistory && message.editHistory.length > 0 && (
-        <div className="mt-2.5 pt-2 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-400 space-y-1.5">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">修改历史：</div>
-          {message.editHistory.map((hist, idx) => (
-            <div key={idx} className="pl-2 border-l border-zinc-300 dark:border-zinc-700">
-              <span className="font-mono text-[10px] text-zinc-500 mr-2">
-                {new Date(hist.editedAt).toLocaleTimeString()}
+        <div className="mt-2 p-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-[11px] space-y-1.5">
+          <div className="font-semibold text-zinc-500">修改历史：</div>
+          {message.editHistory.map((h, i) => (
+            <div key={i} className="pl-2 border-l border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400">
+              <span className="text-[10px] font-mono text-zinc-400">
+                {new Date(h.editedAt).toLocaleTimeString()}
               </span>
-              <span className="line-through opacity-70">{hist.previousContent}</span>
+              <p className="mt-0.5 line-through opacity-75">{h.previousContent}</p>
             </div>
           ))}
         </div>

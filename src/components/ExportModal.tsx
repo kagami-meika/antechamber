@@ -63,31 +63,32 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm('恢复备份将会覆盖当前的全部廊道、临在者与对话数据。确定继续？')) {
-      e.target.value = '';
-      return;
-    }
+    useAppStore.getState().openConfirm(
+      '恢复数据备份',
+      '恢复备份将会覆盖当前的全部廊道、临在者与对话数据。确定继续？',
+      () => {
+        setImporting(true);
+        setStatus(null);
 
-    setImporting(true);
-    setStatus(null);
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const text = event.target?.result as string;
-        await restoreJson(text);
-        setStatus({ type: 'success', message: '数据已成功从备份恢复' });
-      } catch (err: any) {
-        setStatus({ type: 'error', message: `恢复失败: ${err.message || '格式无效'}` });
-      } finally {
-        setImporting(false);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const text = event.target?.result as string;
+            await restoreJson(text);
+            setStatus({ type: 'success', message: '数据已成功从备份恢复' });
+          } catch (err: any) {
+            setStatus({ type: 'error', message: `恢复失败: ${err.message || '格式无效'}` });
+          } finally {
+            setImporting(false);
+          }
+        };
+        reader.onerror = () => {
+          setStatus({ type: 'error', message: '读取文件失败' });
+          setImporting(false);
+        };
+        reader.readAsText(file);
       }
-    };
-    reader.onerror = () => {
-      setStatus({ type: 'error', message: '读取文件失败' });
-      setImporting(false);
-    };
-    reader.readAsText(file);
+    );
     e.target.value = '';
   };
 

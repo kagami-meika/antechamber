@@ -2,6 +2,22 @@ import { create } from 'zustand';
 import { Cloister, Presence, Message, Quote } from '../types/schemas';
 import { api } from '../services/api';
 
+export interface SearchResultItem {
+  message: Message;
+  cloisterTitle: string;
+  presenceName: string;
+}
+
+export interface SettingsConfig {
+  fontSize: number; // default 14
+  fontFamily: string; // default sans
+  quoteFontSize: number; // default 12
+  quoteFontFamily: string; // default sans
+  showTimestamp: boolean; // default true
+  timestampFormat: 'time-only' | 'full'; // default time-only
+  sidebarWidth: number; // default 260
+}
+
 interface AppState {
   cloisters: Cloister[];
   activeCloisterId: string | null;
@@ -12,9 +28,14 @@ interface AppState {
   // Pending quotes for the composer
   pendingQuotes: Quote[];
   
-  // Search query
+  // Search query & results
   searchQuery: string;
-  searchResults: Message[] | null;
+  searchResults: SearchResultItem[] | null;
+  isSearchActive: boolean;
+
+  // Settings
+  settings: SettingsConfig;
+  updateSettings: (partial: Partial<SettingsConfig>) => void;
 
   // Dark mode
   theme: 'light' | 'dark';
@@ -22,6 +43,18 @@ interface AppState {
   // Loading / Error
   loading: boolean;
   error: string | null;
+
+  // UI Modal State
+  isConfirmOpen: boolean;
+  confirmData: {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null;
+
+  openConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  closeConfirm: () => void;
+
 
   // Actions
   init: () => Promise<void>;
@@ -64,6 +97,32 @@ interface AppState {
   restoreJson: (jsonContent: string) => Promise<void>;
 }
 
+const DEFAULT_SETTINGS: SettingsConfig = {
+  fontSize: 13,
+  fontFamily: 'system-ui, -apple-system, sans-serif',
+  quoteFontSize: 12,
+  quoteFontFamily: 'system-ui, -apple-system, sans-serif',
+  showTimestamp: true,
+  timestampFormat: 'time-only',
+  sidebarWidth: 260,
+};
+
+function loadSettings(): SettingsConfig {
+  try {
+    const raw = localStorage.getItem('antechamber_settings_v1');
+    if (raw) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    }
+  } catch {}
+  return DEFAULT_SETTINGS;
+}
+
+function saveSettings(s: SettingsConfig) {
+  try {
+    localStorage.setItem('antechamber_settings_v1', JSON.stringify(s));
+  } catch {}
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   cloisters: [],
   activeCloisterId: null,
@@ -76,6 +135,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light',
   loading: false,
   error: null,
+  isConfirmOpen: false,
+  confirmData: null,
+
+  openConfirm: (title: string, message: string, onConfirm: () => void) => {
+    set({
+      isConfirmOpen: true,
+      confirmData: { title, message, onConfirm },
+    });
+  },
+  closeConfirm: () => {
+    set({ isConfirmOpen: false, confirmData: null });
+  },
+
+  settings: loadSettings(),
+  updateSettings: (partial: Partial<SettingsConfig>) => {
+    set((state) => {
+      const newSettings = { ...state.settings, ...partial };
+      saveSettings(newSettings);
+      return { settings: newSettings };
+    });
+  },
+  isSearchActive: false,
 
   init: async () => {
     set({ loading: true, error: null });
@@ -278,21 +359,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSearchQuery: (query: string) => {
     set({ searchQuery: query });
     if (!query.trim()) {
-      set({ searchResults: null });
+      set({ searchResults: null, isSearchActive: false });
+    } else {
+      set({ isSearchActive: true });
     }
   },
 
   search: async (query: string) => {
     if (!query.trim()) {
-      set({ searchResults: null });
+      set({ searchResults: null, isSearchActive: false });
       return;
     }
+    set({ isSearchActive: true });
     const results = await api.searchMessages(query.trim());
     set({ searchResults: results });
   },
 
   clearSearch: () => {
-    set({ searchQuery: '', searchResults: null });
+    set({ searchQuery: '', searchResults: null, isSearchActive: false });
   },
 
   exportJson: async () => {

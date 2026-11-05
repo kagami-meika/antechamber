@@ -35,6 +35,10 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (presences.some((p) => p.name.toLowerCase() === name.trim().toLowerCase())) {
+      alert('该 Presence 名称已存在');
+      return;
+    }
     await createPresence(name.trim(), description.trim(), color);
     setName('');
     setDescription('');
@@ -51,6 +55,10 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
 
   const handleSaveEdit = async (id: string) => {
     if (!editName.trim()) return;
+    if (presences.some((p) => p.id !== id && p.name.toLowerCase() === editName.trim().toLowerCase())) {
+      alert('该 Presence 名称已存在');
+      return;
+    }
     await updatePresence(id, editName.trim(), editDesc.trim(), editColor);
     setEditingId(null);
   };
@@ -62,9 +70,6 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Presences</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              每个 Presence 代表你的某种自我侧面，无需完整人格定义。
-            </p>
           </div>
           <button
             onClick={onClose}
@@ -176,9 +181,11 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                   {presences.length > 0 && (
                     <button
                       onClick={() => {
-                        if (confirm(`确认删除【${p.name}】？`)) {
-                          deletePresence(p.id);
-                        }
+                        useAppStore.getState().openConfirm(
+                          '删除 Presence',
+                          `确认删除【${p.name}】？`,
+                          () => deletePresence(p.id)
+                        );
                       }}
                       className="p-1 text-zinc-400 hover:text-red-500"
                       title="删除"
