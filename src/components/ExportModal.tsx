@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { X, Download, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
-import { save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 
 interface ExportModalProps {
@@ -21,24 +20,19 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
   const saveContentToFile = async (
     content: string,
     defaultPath: string,
-    filters: Array<{ name: string; extensions: string[] }>,
+    extension: string,
     mimeType: string
   ) => {
     if (isTauri()) {
       try {
-        const filePath = await save({
-          defaultPath,
-          filters,
+        const saved = await invoke<boolean>('save_file_dialog', { 
+            defaultName: defaultPath,
+            extension: extension,
+            content: content 
         });
-        if (!filePath) {
-          // User cancelled
-          return false;
-        }
-        await invoke('save_file_dialog', { path: filePath, content });
-        return true;
+        return saved;
       } catch (err: any) {
         console.error('Tauri save dialog error:', err);
-        // Fallback to web download if dialog fails
       }
     }
 
@@ -59,12 +53,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
     try {
       const data = await exportJson();
       const filename = `antechamber-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      const saved = await saveContentToFile(
-        data,
-        filename,
-        [{ name: 'JSON Backup', extensions: ['json'] }],
-        'application/json'
-      );
+      const saved = await saveContentToFile(data, filename, 'json', 'application/json');
       if (saved) {
         setStatus({ type: 'success', message: '已成功导出 JSON 完整备份文件' });
       }
@@ -77,12 +66,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
     try {
       const data = await exportJsonl();
       const filename = `antechamber-messages-${new Date().toISOString().slice(0, 10)}.jsonl`;
-      const saved = await saveContentToFile(
-        data,
-        filename,
-        [{ name: 'JSON Lines', extensions: ['jsonl'] }],
-        'application/x-ndjson'
-      );
+      const saved = await saveContentToFile(data, filename, 'jsonl', 'application/x-ndjson');
       if (saved) {
         setStatus({ type: 'success', message: '已成功导出 JSONL 消息序列文件' });
       }
@@ -95,12 +79,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
     try {
       const data = await exportTxt();
       const filename = `antechamber-dialogue-${new Date().toISOString().slice(0, 10)}.txt`;
-      const saved = await saveContentToFile(
-        data,
-        filename,
-        [{ name: 'Plain Text', extensions: ['txt'] }],
-        'text/plain;charset=utf-8'
-      );
+      const saved = await saveContentToFile(data, filename, 'txt', 'text/plain;charset=utf-8');
       if (saved) {
         setStatus({ type: 'success', message: '已成功导出 TXT 人类可读文本' });
       }

@@ -193,8 +193,24 @@ pub fn export_txt(state: State<'_, AppState>, cloister_id: Option<String>) -> Re
 }
 
 #[tauri::command]
-pub fn save_file_dialog(path: String, content: String) -> Result<(), String> {
-    std::fs::write(&path, content).map_err(|e| e.to_string())
+pub fn save_file_dialog(default_name: String, extension: String, content: String) -> Result<bool, String> {
+    let mut dialog = rfd::FileDialog::new()
+        .set_file_name(&default_name);
+    
+    if extension == "json" {
+        dialog = dialog.add_filter("JSON Backup", &["json"]);
+    } else if extension == "jsonl" {
+        dialog = dialog.add_filter("JSON Lines", &["jsonl"]);
+    } else if extension == "txt" {
+        dialog = dialog.add_filter("Plain Text", &["txt"]);
+    }
+
+    if let Some(path) = dialog.save_file() {
+        std::fs::write(&path, content).map_err(|e| e.to_string())?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[tauri::command]
