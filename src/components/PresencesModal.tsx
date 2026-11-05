@@ -29,6 +29,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editColor, setEditColor] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -36,7 +37,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
     e.preventDefault();
     if (!name.trim()) return;
     if (presences.some((p) => p.name.toLowerCase() === name.trim().toLowerCase())) {
-      alert('该 Presence 名称已存在');
+      useAppStore.getState().openConfirm('提示', '该 Presence 名称已存在', () => {});
       return;
     }
     await createPresence(name.trim(), description.trim(), color);
@@ -56,7 +57,7 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
   const handleSaveEdit = async (id: string) => {
     if (!editName.trim()) return;
     if (presences.some((p) => p.id !== id && p.name.toLowerCase() === editName.trim().toLowerCase())) {
-      alert('该 Presence 名称已存在');
+      useAppStore.getState().openConfirm('提示', '该 Presence 名称已存在', () => {});
       return;
     }
     await updatePresence(id, editName.trim(), editDesc.trim(), editColor);
@@ -83,6 +84,38 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {presences.map((p) => {
             const isEditing = p.id === editingId;
+            const isDeleting = p.id === deletingId;
+
+            if (isDeleting) {
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between p-3 border border-red-200 dark:border-red-900/50 rounded bg-red-50/50 dark:bg-red-950/20 transition animate-in fade-in duration-100"
+                >
+                  <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 font-medium">
+                    <Trash2 size={13} />
+                    <span>确认删除【{p.name}】？</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setDeletingId(null)}
+                      className="text-xs px-2.5 py-1 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await deletePresence(p.id);
+                        setDeletingId(null);
+                      }}
+                      className="text-xs px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition shadow-sm"
+                    >
+                      确认删除
+                    </button>
+                  </div>
+                </div>
+              );
+            }
 
             if (isEditing) {
               return (
@@ -180,14 +213,8 @@ export const PresencesModal: React.FC<PresencesModalProps> = ({ isOpen, onClose 
                   </button>
                   {presences.length > 0 && (
                     <button
-                      onClick={() => {
-                        useAppStore.getState().openConfirm(
-                          '删除 Presence',
-                          `确认删除【${p.name}】？`,
-                          () => deletePresence(p.id)
-                        );
-                      }}
-                      className="p-1 text-zinc-400 hover:text-red-500"
+                      onClick={() => setDeletingId(p.id)}
+                      className="p-1 text-zinc-400 hover:text-red-500 rounded"
                       title="删除"
                     >
                       <Trash2 size={13} />
